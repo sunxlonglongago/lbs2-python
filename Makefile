@@ -103,7 +103,7 @@ install_db:  ## Create the database on a first install; never touch an existing 
 		$(PYTHON) "$(SERVER_SRC_DIR)/tools/init_db.py" --data "$(DATA_DIR)"; \
 	fi
 
-update: install_source  ## Refresh the release directory without touching data
+update: install_source install_deps  ## Deploy a new revision without touching data
 	$(Q)echo '==> updated; restart with: sudo systemctl restart $(SERVICE)'
 
 service-install:  ## Install and enable the systemd service
