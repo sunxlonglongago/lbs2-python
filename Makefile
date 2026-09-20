@@ -27,13 +27,21 @@ ifeq ($(origin DATA_DIR), command line)
   E2E_DATA_DIR := $(DATA_DIR)
 endif
 
+# db-init / db-check work on dev-data/ unless DATA_DIR is given on the command
+# line, in which case they act on that directory (useful for a live install).
+ifeq ($(origin DATA_DIR), command line)
+  DB_TARGET := $(DATA_DIR)
+else
+  DB_TARGET := $(DEV_DATA_DIR)
+endif
+
 PYTHON ?= python3
 UV ?= $(shell command -v uv 2>/dev/null || echo uv)
 UV_RUN := $(UV) run --project "$(SERVER_SRC_DIR)" --no-sync python
 
 .PHONY: help build fe dev server_dev install install_dirs install_source install_deps \
-	update service-install service-status service-logs test_api_full db-import db-seed \
-	db-schema docs clean
+	update service-install service-status service-logs test_api_full db-init db-check \
+	docs clean
 
 help:  ## List all targets
 	$(Q)printf '\nLBS^2\n\n'
@@ -49,29 +57,25 @@ fe:  ## Copy frontend/ into server/src/static/
 	$(Q)cp -R "$(FRONTEND_DIR)/." "$(SERVER_STATIC_DIR)/"
 	$(Q)echo '==> frontend synced to server/src/static'
 
-dev: server_dev  ## Run the local development server
+dev: server_dev  ## Initialise dev-data/ if needed and run the server
 
 server_dev:  ## Run Flask against the dev-data/ directory
 	$(Q)mkdir -p "$(DEV_DATA_DIR)"
-	$(Q)$(PYTHON) "$(SERVER_SRC_DIR)/tools/import_access.py" --data "$(DEV_DATA_DIR)" || true
-	$(Q)$(PYTHON) "$(SERVER_SRC_DIR)/tools/seed_demo.py" --data "$(DEV_DATA_DIR)"
+	$(Q)$(PYTHON) "$(SERVER_SRC_DIR)/tools/init_db.py" --data "$(DEV_DATA_DIR)" --demo
 	$(Q)printf '==> http://127.0.0.1:%s/\n' "$(PORT)"
 	$(Q)SESSION_COOKIE_SECURE=0 $(PYTHON) "$(SERVER_SRC_DIR)/app.py" --data "$(DEV_DATA_DIR)" --port $(PORT)
 
-db-import:  ## Import the original Access databases into dev-data/
-	$(PYTHON) "$(SERVER_SRC_DIR)/tools/import_access.py" --data "$(DEV_DATA_DIR)"
+db-init:  ## Create the database, defaults and demo rows (dev-data/, or DATA_DIR)
+	$(PYTHON) "$(SERVER_SRC_DIR)/tools/init_db.py" --data "$(DB_TARGET)" --demo
 
-db-seed:  ## Write the hello world demo rows
-	$(PYTHON) "$(SERVER_SRC_DIR)/tools/seed_demo.py" --data "$(DEV_DATA_DIR)"
-
-db-schema:  ## Verify the SQLite schema against the Access reference
-	$(PYTHON) "$(SERVER_SRC_DIR)/tools/dump_schema.py" --data "$(DEV_DATA_DIR)"
+db-check:  ## Verify a database against the schema in the code (dev-data/, or DATA_DIR)
+	$(PYTHON) "$(SERVER_SRC_DIR)/tools/check_db.py" --data "$(DB_TARGET)"
 
 docs:  ## Regenerate docs/database.md, docs/api.md and docs/openapi.json
 	$(Q)$(PYTHON) "$(SERVER_SRC_DIR)/tools/export_docs.py"
 	$(Q)$(PYTHON) "$(SERVER_SRC_DIR)/export_openapi.py"
 
-install: install_dirs install_source install_deps  ## Install into RELEASE_DIR
+install: install_dirs install_source install_deps install_db  ## Install into RELEASE_DIR
 
 install_dirs:
 	$(Q)$(SUDO) mkdir -p "$(SERVER_DIR)" "$(DATA_DIR)"
@@ -91,6 +95,13 @@ install_deps:  ## Sync the Python dependencies
 	$(Q)cd "$(SERVER_SRC_DIR)" && $(UV) sync --frozen 2>/dev/null || \
 		cd "$(SERVER_SRC_DIR)" && $(UV) sync
 	$(Q)echo '==> dependencies synced'
+
+install_db:  ## Create the database on a first install; never touch an existing one
+	$(Q)if [ -f "$(DATA_DIR)/lbs.sqlite3" ]; then \
+		echo '==> database already present, left untouched'; \
+	else \
+		$(PYTHON) "$(SERVER_SRC_DIR)/tools/init_db.py" --data "$(DATA_DIR)"; \
+	fi
 
 update: install_source  ## Refresh the release directory without touching data
 	$(Q)echo '==> updated; restart with: sudo systemctl restart $(SERVICE)'

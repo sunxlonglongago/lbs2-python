@@ -1,8 +1,7 @@
 """Guestbook reads and writes, ported from ``source/src_gbook.asp``.
 
-The original keeps the guestbook in its own Access database (``gbook.mdb``)
-with a single ``Guestbook`` table; the port keeps the same table in the one
-SQLite file.
+The guestbook lives in its own ``Guestbook`` table alongside everything else in
+the single SQLite file.
 """
 
 from __future__ import annotations

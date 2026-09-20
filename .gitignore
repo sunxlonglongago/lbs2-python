@@ -223,9 +223,8 @@ dev-data/
 # Runtime data directory used by --data (database, secret_key, uploads).
 data/
 
-# Original Access databases and their backups. They carry real user rows
-# (names, e-mails, IPs), so they must never end up in the repository: keep them
-# outside the checkout and point LBS_SOURCE_DATA at them instead.
+# Database files and their backups: they carry real user rows, so they must never
+# end up in the repository. Keep the live copies in the runtime data directory.
 *.mdb
 *.accdb
 *.ldb

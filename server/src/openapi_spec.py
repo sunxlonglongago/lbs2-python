@@ -12,8 +12,9 @@ INFO = {
     "title": "LBS^2 (Python port) API",
     "version": "2.0.304",
     "description": (
-        "HTTP API of the LBS^2 v2.0.304 port (ASP + JScript + Access) on Flask + SQLite. "
-        "Table and column names match the original Access database, and permissions use the same five digit group_rights string."
+        "HTTP API of the LBS^2 v2.0.304 port (the 2005 ASP weblog engine) on "
+        "Flask + SQLite. Table and column names follow the original database, and "
+        "permissions use the same five digit group_rights string."
     ),
 }
 

@@ -7,11 +7,6 @@ dependencies = [
     "flask>=3.0",
 ]
 
-[project.optional-dependencies]
-import = [
-    "access_parser>=0.0.6",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

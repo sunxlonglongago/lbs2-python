@@ -1,22 +1,16 @@
-"""SQLite schema for the LBS^2 port.
+"""Database layout.
 
-Table names and column names are copied verbatim from the original Access
-database (``data/blog.mdb``, ``data/gbook.mdb``) so that the ASP sources and
-the Python port can be compared column by column.
+This module is the single source of truth for the schema: the DDL that creates a
+fresh database, the declared field types the documentation and the self check
+read, and the built-in user groups.
 
-Type mapping used by the importer:
+Table and column names follow the original LBS^2 database this application is
+based on (see NOTICE), which is why the ``blog_`` prefix is kept.
 
-===========  ==================  ==============================
-Jet type     Access type         SQLite
-===========  ==================  ==============================
-1            Yes/No              INTEGER (0/1)
-2            Byte                INTEGER
-3            Integer             INTEGER
-4            Long Integer        INTEGER (PRIMARY KEY AUTOINCREMENT when autonumber)
-8            Date/Time           TEXT ``YYYY-MM-DD HH:MM:SS``
-10           Text(n)             TEXT
-12           Memo                TEXT
-===========  ==================  ==============================
+Every column is declared as ``(name, sqlite_declaration, declared_type)``. The
+declared type records the app level type and, for text columns, the length the
+application enforces; SQLite itself only stores an affinity, so it appears in
+``docs/database.md`` and in ``tools/check_db.py`` rather than in the DDL.
 """
 
 from __future__ import annotations
@@ -26,130 +20,139 @@ from typing import Final
 
 SCHEMA_VERSION: Final = 1
 
-# Table name -> ordered (column, column definition) pairs.
-# The order follows the original Access table definitions.
-TABLES: Final[dict[str, tuple[tuple[str, str], ...]]] = {
+# Declared type -> SQLite affinity, used by the docs and the schema check.
+DECLARED_TO_SQLITE: Final = {
+    "YESNO": "INTEGER",
+    "BYTE": "INTEGER",
+    "INTEGER": "INTEGER",
+    "LONG": "INTEGER",
+    "DATETIME": "TEXT",
+    "TEXT": "TEXT",
+    "MEMO": "TEXT",
+}
+
+# Table name -> ordered (column, sqlite declaration, declared type) triples.
+TABLES: Final[dict[str, tuple[tuple[str, str, str], ...]]] = {
     "blog_Article": (
-        ("log_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("log_catID", "INTEGER"),
-        ("log_title", "TEXT"),
-        ("log_authorID", "INTEGER"),
-        ("log_author", "TEXT"),
-        ("log_editMark", "TEXT"),
-        ("log_trackbackURL", "TEXT"),
-        ("log_content0", "TEXT"),
-        ("log_content1", "TEXT"),
-        ("log_mode", "INTEGER"),
-        ("log_locked", "INTEGER"),
-        ("log_selected", "INTEGER"),
-        ("log_ubbFlags", "TEXT"),
-        ("log_postTime", "TEXT"),
-        ("log_ip", "TEXT"),
-        ("log_commentCount", "INTEGER"),
-        ("log_viewCount", "INTEGER"),
-        ("log_trackbackCount", "INTEGER"),
+        ("log_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("log_catID", "INTEGER", "LONG"),
+        ("log_title", "TEXT", "TEXT(255)"),
+        ("log_authorID", "INTEGER", "LONG"),
+        ("log_author", "TEXT", "TEXT(25)"),
+        ("log_editMark", "TEXT", "TEXT(50)"),
+        ("log_trackbackURL", "TEXT", "TEXT(255)"),
+        ("log_content0", "TEXT", "MEMO"),
+        ("log_content1", "TEXT", "MEMO"),
+        ("log_mode", "INTEGER", "BYTE"),
+        ("log_locked", "INTEGER", "YESNO"),
+        ("log_selected", "INTEGER", "YESNO"),
+        ("log_ubbFlags", "TEXT", "TEXT(100)"),
+        ("log_postTime", "TEXT", "DATETIME"),
+        ("log_ip", "TEXT", "TEXT(15)"),
+        ("log_commentCount", "INTEGER", "LONG"),
+        ("log_viewCount", "INTEGER", "LONG"),
+        ("log_trackbackCount", "INTEGER", "LONG"),
     ),
     "blog_Category": (
-        ("cat_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("cat_name", "TEXT"),
-        ("cat_order", "INTEGER"),
-        ("cat_articleCount", "INTEGER"),
-        ("cat_hidden", "INTEGER"),
-        ("cat_locked", "INTEGER"),
+        ("cat_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("cat_name", "TEXT", "TEXT(50)"),
+        ("cat_order", "INTEGER", "LONG"),
+        ("cat_articleCount", "INTEGER", "LONG"),
+        ("cat_hidden", "INTEGER", "YESNO"),
+        ("cat_locked", "INTEGER", "YESNO"),
     ),
     "blog_Comment": (
-        ("comm_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("log_id", "INTEGER"),
-        ("comm_content", "TEXT"),
-        ("comm_authorID", "INTEGER"),
-        ("comm_author", "TEXT"),
-        ("comm_editMark", "TEXT"),
-        ("comm_hidden", "INTEGER"),
-        ("comm_ubbFlags", "TEXT"),
-        ("comm_postTime", "TEXT"),
-        ("comm_ip", "TEXT"),
+        ("comm_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("log_id", "INTEGER", "LONG"),
+        ("comm_content", "TEXT", "MEMO"),
+        ("comm_authorID", "INTEGER", "LONG"),
+        ("comm_author", "TEXT", "TEXT(25)"),
+        ("comm_editMark", "TEXT", "TEXT(50)"),
+        ("comm_hidden", "INTEGER", "YESNO"),
+        ("comm_ubbFlags", "TEXT", "TEXT(20)"),
+        ("comm_postTime", "TEXT", "DATETIME"),
+        ("comm_ip", "TEXT", "TEXT(15)"),
     ),
     "blog_Settings": (
-        # COLLATE NOCASE mirrors Access: updateSettings() in src_admin.asp
-        # addresses rows by lower case name ("blogtitle") while the stored
-        # names are camel case ("blogTitle"), and Jet compares strings case
-        # insensitively. Plain SQLite would create a duplicate row instead.
-        ("set_name", "TEXT PRIMARY KEY COLLATE NOCASE"),
-        ("set_type", "INTEGER"),
-        ("set_value0", "INTEGER"),
-        ("set_value1", "TEXT"),
+        # COLLATE NOCASE: the admin backend addresses settings with lower case
+        # names ("blogtitle") while the stored names are camel case
+        # ("blogTitle"), and the original database compared them case
+        # insensitively. Without it a write would create a second row.
+        ("set_name", "TEXT PRIMARY KEY COLLATE NOCASE", "TEXT(25)"),
+        ("set_type", "INTEGER", "BYTE"),
+        ("set_value0", "INTEGER", "LONG"),
+        ("set_value1", "TEXT", "MEMO"),
     ),
     "blog_Smilies": (
-        ("sm_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("sm_image", "TEXT"),
-        ("sm_code", "TEXT"),
+        ("sm_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("sm_image", "TEXT", "TEXT(50)"),
+        ("sm_code", "TEXT", "TEXT(25)"),
     ),
     "blog_Trackback": (
-        ("tb_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("log_id", "INTEGER"),
-        ("tb_url", "TEXT"),
-        ("tb_title", "TEXT"),
-        ("tb_blog", "TEXT"),
-        ("tb_excerpt", "TEXT"),
-        ("tb_time", "TEXT"),
-        ("tb_ip", "TEXT"),
+        ("tb_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("log_id", "INTEGER", "LONG"),
+        ("tb_url", "TEXT", "TEXT(100)"),
+        ("tb_title", "TEXT", "TEXT(100)"),
+        ("tb_blog", "TEXT", "TEXT(100)"),
+        ("tb_excerpt", "TEXT", "MEMO"),
+        ("tb_time", "TEXT", "DATETIME"),
+        ("tb_ip", "TEXT", "TEXT(15)"),
     ),
     "blog_User": (
-        ("user_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        # The ASP sources look users up by name and rely on Access' case
-        # insensitive comparison; keep the same behaviour here.
-        ("user_name", "TEXT COLLATE NOCASE"),
-        ("user_password", "TEXT"),
-        ("user_salt", "TEXT"),
-        ("user_groupID", "INTEGER"),
-        ("user_gender", "INTEGER"),
-        ("user_email", "TEXT"),
-        ("user_hideEmail", "INTEGER"),
-        ("user_homepage", "TEXT"),
-        ("user_articleCount", "INTEGER"),
-        ("user_commentCount", "INTEGER"),
-        ("user_lastVisit", "TEXT"),
-        ("user_ip", "TEXT"),
-        ("user_hashKey", "TEXT"),
+        ("user_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        # Same case insensitive comparison as blog_Settings.set_name.
+        ("user_name", "TEXT COLLATE NOCASE", "TEXT(25)"),
+        ("user_password", "TEXT", "TEXT(40)"),
+        ("user_salt", "TEXT", "TEXT(6)"),
+        ("user_groupID", "INTEGER", "LONG"),
+        ("user_gender", "INTEGER", "BYTE"),
+        ("user_email", "TEXT", "TEXT(50)"),
+        ("user_hideEmail", "INTEGER", "YESNO"),
+        ("user_homepage", "TEXT", "TEXT(50)"),
+        ("user_articleCount", "INTEGER", "LONG"),
+        ("user_commentCount", "INTEGER", "LONG"),
+        ("user_lastVisit", "TEXT", "DATETIME"),
+        ("user_ip", "TEXT", "TEXT(15)"),
+        ("user_hashKey", "TEXT", "TEXT(40)"),
     ),
     "blog_UserGroup": (
-        ("group_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("group_name", "TEXT"),
-        ("group_rights", "TEXT"),
+        ("group_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("group_name", "TEXT", "TEXT(50)"),
+        ("group_rights", "TEXT", "TEXT(50)"),
     ),
     "blog_VisitorRecord": (
-        ("vr_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("vr_ip", "TEXT"),
-        ("vr_os", "TEXT"),
-        ("vr_browser", "TEXT"),
-        ("vr_time", "TEXT"),
-        ("vr_referer", "TEXT"),
-        ("vr_target", "TEXT"),
+        ("vr_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("vr_ip", "TEXT", "TEXT(15)"),
+        ("vr_os", "TEXT", "TEXT(20)"),
+        ("vr_browser", "TEXT", "TEXT(30)"),
+        ("vr_time", "TEXT", "DATETIME"),
+        ("vr_referer", "TEXT", "TEXT(250)"),
+        ("vr_target", "TEXT", "TEXT(50)"),
     ),
     "blog_WordFilter": (
-        ("wf_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("wf_mode", "INTEGER"),
-        ("wf_text", "TEXT"),
-        ("wf_replace", "TEXT"),
-        ("wf_regExp", "INTEGER"),
+        ("wf_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("wf_mode", "INTEGER", "BYTE"),
+        ("wf_text", "TEXT", "TEXT(50)"),
+        ("wf_replace", "TEXT", "TEXT(50)"),
+        ("wf_regExp", "INTEGER", "YESNO"),
     ),
     "Guestbook": (
-        ("gb_id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("gb_username", "TEXT"),
-        ("gb_userID", "INTEGER"),
-        ("gb_content", "TEXT"),
-        ("gb_editMark", "TEXT"),
-        ("gb_ubbFlags", "TEXT"),
-        ("gb_postTime", "TEXT"),
-        ("gb_replyUsername", "TEXT"),
-        ("gb_reply", "TEXT"),
-        ("gb_replyTime", "TEXT"),
-        ("gb_hidden", "INTEGER"),
-        ("gb_ip", "TEXT"),
+        ("gb_id", "INTEGER PRIMARY KEY AUTOINCREMENT", "LONG AUTOINCREMENT"),
+        ("gb_username", "TEXT", "TEXT(50)"),
+        ("gb_userID", "INTEGER", "LONG"),
+        ("gb_content", "TEXT", "MEMO"),
+        ("gb_editMark", "TEXT", "TEXT(50)"),
+        ("gb_ubbFlags", "TEXT", "TEXT(10)"),
+        ("gb_postTime", "TEXT", "DATETIME"),
+        ("gb_replyUsername", "TEXT", "TEXT(50)"),
+        ("gb_reply", "TEXT", "MEMO"),
+        ("gb_replyTime", "TEXT", "DATETIME"),
+        ("gb_hidden", "INTEGER", "YESNO"),
+        ("gb_ip", "TEXT", "TEXT(15)"),
     ),
 }
 
-# Indexes derived from the query shapes in the original ASP sources.
+# Indexes derived from the queries the application runs.
 INDEXES: Final[tuple[str, ...]] = (
     "CREATE INDEX IF NOT EXISTS idx_article_posttime ON blog_Article(log_postTime DESC)",
     "CREATE INDEX IF NOT EXISTS idx_article_catid ON blog_Article(log_catID)",
@@ -161,7 +164,7 @@ INDEXES: Final[tuple[str, ...]] = (
     "CREATE INDEX IF NOT EXISTS idx_visitor_time ON blog_VisitorRecord(vr_time)",
 )
 
-# Built-in groups shipped with LBS^2. The rights string is five digits:
+# Built-in groups. The rights string is five digits:
 # view / post / edit / delete / upload.
 BUILTIN_GROUPS: Final = (
     (1, "Admin", "99999"),
@@ -172,14 +175,21 @@ BUILTIN_GROUPS: Final = (
 )
 
 
+def columns(table: str) -> tuple[tuple[str, str, str], ...]:
+    """Return the ``(name, declaration, declared type)`` triples of ``table``."""
+    return TABLES[table]
+
+
 def column_names(table: str) -> tuple[str, ...]:
-    """Return the column names of ``table`` in original definition order."""
-    return tuple(name for name, _ in TABLES[table])
+    """Return the column names of ``table`` in declaration order."""
+    return tuple(name for name, _declaration, _declared in TABLES[table])
 
 
 def create_statement(table: str) -> str:
-    columns = ",\n    ".join(f"{name} {decl}" for name, decl in TABLES[table])
-    return f"CREATE TABLE IF NOT EXISTS {table} (\n    {columns}\n)"
+    columns_sql = ",\n    ".join(
+        f"{name} {declaration}" for name, declaration, _declared in TABLES[table]
+    )
+    return f"CREATE TABLE IF NOT EXISTS {table} (\n    {columns_sql}\n)"
 
 
 def create_statements() -> list[str]:

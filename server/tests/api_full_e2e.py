@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Full business API end-to-end tests.
 
-Creates a throw away data directory (or copies an existing one), imports the
-original Access databases when ``access_parser`` is available, seeds the demo
-rows and runs every scenario against the Flask test client.
+Creates a throw away data directory (or copies an existing one), initialises it
+with ``tools/init_db.py --demo`` and runs every scenario against the Flask test
+client.
 
 Usage::
 
@@ -36,15 +36,10 @@ def build_data_dir(target: Path, source: "Path | None") -> None:
             sys.exit(f"data directory does not exist: {source}")
         shutil.copytree(source, target, dirs_exist_ok=True)
         return
-    importer = SERVER_SRC / "tools" / "import_access.py"
-    result = subprocess.run(
-        [sys.executable, str(importer), "--data", str(target)],
-        capture_output=True, text=True,
+    init = SERVER_SRC / "tools" / "init_db.py"
+    subprocess.run(
+        [sys.executable, str(init), "--data", str(target), "--demo"], check=True
     )
-    if result.returncode != 0:
-        print("skipping the Access import (needs access_parser):", result.stderr.strip()[-120:])
-    seed = SERVER_SRC / "tools" / "seed_demo.py"
-    subprocess.run([sys.executable, str(seed), "--data", str(target)], check=True)
 
 
 def parse_args(argv=None) -> argparse.Namespace:

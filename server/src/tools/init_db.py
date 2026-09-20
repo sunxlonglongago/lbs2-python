@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Seed demo data: one hello world style row per table.
+"""Initialise a data directory.
 
-The original Access database already carries the 49 site settings, the 20
-smilies and the 5 user groups, but every content table is empty. This script
-adds the reference rows plus one demo record per content table so the frontend
-and backend can be exercised end to end.
+Creates the database when it is missing and fills in what a running site needs:
+the default settings, the built-in user groups, the smilies and one
+administrator account. Safe to run again - rows are only inserted when they are
+missing, so settings an administrator has changed are never overwritten.
+
+``--demo`` additionally writes a hello world article, comment, trackback,
+guestbook entry, visitor record and word filter, which is convenient for a
+first look and is what the end-to-end tests expect.
 
 Usage::
 
-    python3 server/src/tools/seed_demo.py --data dev-data
+    python3 server/src/tools/init_db.py --data dev-data
+    python3 server/src/tools/init_db.py --data dev-data --demo
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ import config  # noqa: E402
 import db  # noqa: E402
 import schema  # noqa: E402
 
-# (set_name, set_type, set_value0, set_value1) exactly as shipped by LBS^2.
+# (set_name, set_type, set_value0, set_value1) - the defaults the software ships.
 DEFAULT_SETTINGS = (
     ("announce", 1, 0, "You have installed LBS2.\n"
                        "Please login as Admin and config it in "
@@ -54,8 +59,6 @@ DEFAULT_SETTINGS = (
     ("enableDynamicCalendar", 0, 1, ""),
     ("enableGuestBook", 0, 1, ""),
     ("enableRegister", 0, 1, ""),
-    # Security code (scode.asp) is disabled for now: the endpoint is not
-    # implemented yet, so the forms must not render the captcha row.
     ("enableSecurityCode", 0, 0, ""),
     ("enableTrackbackIn", 0, 1, ""),
     ("enableTrackbackOut", 0, 1, ""),
@@ -64,7 +67,8 @@ DEFAULT_SETTINGS = (
     ("entryPerPageGuestBook", 0, 10, ""),
     ("imageFolder", 1, 0, "styles/default/images"),
     ("links", 1, 0,
-     '<a href="http://www.voidland.com/" target="_blank">原文如此.SiC</a><br>'),
+     '<a href="https://github.com/sunxlonglongago/lbs2-python" target="_blank">'
+     'LBS^2 Python port</a><br>'),
     ("listEntryPerPage", 0, 30, ""),
     ("logoImage", 1, 0, "styles/default/images/logo.gif"),
     ("maxCommentLength", 0, 1000, ""),
@@ -105,11 +109,11 @@ SMILIES = (
     ("[idea]", "icon_idea.gif"),
 )
 
+DEFAULT_ADMIN = "Admin"
+DEFAULT_PASSWORD = "comeon"
+ADMIN_SALT = "lbs2py"
 DEMO_IP = "127.0.0.1"
 DEMO_UBB = "111111"
-ADMIN_NAME = "Admin"
-ADMIN_PASSWORD = "comeon"  # the LBS^2 default, change it after the first login
-ADMIN_SALT = "lbs2py"
 
 
 def password_hash(password: str, salt: str) -> str:
@@ -125,9 +129,14 @@ def count(conn, table: str) -> int:
 
 
 def seed_settings(conn) -> int:
+    """Insert defaults that are missing; never touch an existing value."""
     written = 0
     for name, set_type, value0, value1 in DEFAULT_SETTINGS:
-        db.upsert(
+        if db.query_one(
+            conn, "SELECT 1 FROM blog_Settings WHERE set_name = ?", (name,)
+        ):
+            continue
+        db.insert(
             conn,
             "blog_Settings",
             {
@@ -136,7 +145,6 @@ def seed_settings(conn) -> int:
                 "set_value0": value0,
                 "set_value1": value1,
             },
-            key="set_name",
         )
         written += 1
     return written
@@ -145,7 +153,9 @@ def seed_settings(conn) -> int:
 def seed_groups(conn) -> int:
     written = 0
     for group_id, name, rights in schema.BUILTIN_GROUPS:
-        if db.query_one(conn, "SELECT 1 FROM blog_UserGroup WHERE group_id = ?", (group_id,)):
+        if db.query_one(
+            conn, "SELECT 1 FROM blog_UserGroup WHERE group_id = ?", (group_id,)
+        ):
             continue
         db.insert(
             conn,
@@ -166,35 +176,34 @@ def seed_smilies(conn) -> int:
     return written
 
 
-def seed_admin(conn, stamp: str) -> int:
-    existing = db.query_one(
-        conn, "SELECT user_id FROM blog_User WHERE user_name = ?", (ADMIN_NAME,)
-    )
-    if existing:
-        return 0
+def seed_admin(conn, stamp: str, password: str, name: str = DEFAULT_ADMIN) -> bool:
+    """Create the administrator account when there is none yet."""
+    if db.query_one(conn, "SELECT 1 FROM blog_User WHERE user_name = ?", (name,)):
+        return False
     db.insert(
         conn,
         "blog_User",
         {
-            "user_name": ADMIN_NAME,
-            "user_password": password_hash(ADMIN_PASSWORD, ADMIN_SALT),
+            "user_name": name,
+            "user_password": password_hash(password, ADMIN_SALT),
             "user_salt": ADMIN_SALT,
             "user_groupID": 1,
             "user_gender": 0,
-            "user_email": "admin@localhost",
+            "user_email": "",
             "user_hideEmail": 0,
             "user_homepage": "",
-            "user_articleCount": 1,
-            "user_commentCount": 1,
+            "user_articleCount": 0,
+            "user_commentCount": 0,
             "user_lastVisit": stamp,
             "user_ip": DEMO_IP,
             "user_hashKey": "",
         },
     )
-    return 1
+    return True
 
 
-def seed_content(conn, stamp: str) -> dict[str, int]:
+def seed_demo_content(conn, stamp: str) -> dict[str, int]:
+    """One hello world row per content table, only when it is still empty."""
     written: dict[str, int] = {}
 
     if not count(conn, "blog_Category"):
@@ -210,7 +219,9 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
             },
         )
         written["blog_Category"] = 1
-    category_id = db.scalar(conn, "SELECT cat_id FROM blog_Category ORDER BY cat_order LIMIT 1")
+    category_id = db.scalar(
+        conn, "SELECT cat_id FROM blog_Category ORDER BY cat_order LIMIT 1"
+    )
 
     if not count(conn, "blog_Article"):
         db.insert(
@@ -220,11 +231,11 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
                 "log_catID": category_id,
                 "log_title": "Hello World",
                 "log_authorID": 1,
-                "log_author": ADMIN_NAME,
+                "log_author": DEFAULT_ADMIN,
                 "log_editMark": "",
                 "log_trackbackURL": "",
-                "log_content0": "Hello World. This is the first entry of the ported "
-                                "LBS^2 running on Python and SQLite.",
+                "log_content0": "Hello World. This is the first entry of a fresh "
+                                "install, running on Flask and SQLite.",
                 "log_content1": "",
                 "log_mode": 1,
                 "log_locked": 0,
@@ -233,12 +244,14 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
                 "log_postTime": stamp,
                 "log_ip": DEMO_IP,
                 "log_commentCount": 1,
-                "log_viewCount": 1,
+                "log_viewCount": 0,
                 "log_trackbackCount": 1,
             },
         )
         written["blog_Article"] = 1
-    article_id = db.scalar(conn, "SELECT log_id FROM blog_Article ORDER BY log_id LIMIT 1")
+    article_id = db.scalar(
+        conn, "SELECT log_id FROM blog_Article ORDER BY log_id LIMIT 1"
+    )
 
     if not count(conn, "blog_Comment"):
         db.insert(
@@ -248,7 +261,7 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
                 "log_id": article_id,
                 "comm_content": "Hello World comment.",
                 "comm_authorID": 1,
-                "comm_author": ADMIN_NAME,
+                "comm_author": DEFAULT_ADMIN,
                 "comm_editMark": "",
                 "comm_hidden": 0,
                 "comm_ubbFlags": DEMO_UBB,
@@ -264,9 +277,9 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
             "blog_Trackback",
             {
                 "log_id": article_id,
-                "tb_url": "http://localhost:5057/article/1",
+                "tb_url": "http://localhost:5059/article.asp?id=1",
                 "tb_title": "Hello World",
-                "tb_blog": "LBS^2 Demo",
+                "tb_blog": "Example blog",
                 "tb_excerpt": "Hello World trackback.",
                 "tb_time": stamp,
                 "tb_ip": DEMO_IP,
@@ -285,7 +298,7 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
                 "gb_editMark": "",
                 "gb_ubbFlags": DEMO_UBB,
                 "gb_postTime": stamp,
-                "gb_replyUsername": ADMIN_NAME,
+                "gb_replyUsername": DEFAULT_ADMIN,
                 "gb_reply": "Hello World, thanks for signing.",
                 "gb_replyTime": stamp,
                 "gb_hidden": 0,
@@ -326,6 +339,7 @@ def seed_content(conn, stamp: str) -> dict[str, int]:
 
 
 def refresh_counters(conn) -> None:
+    """Keep the counter settings in step with the actual row counts."""
     counters = {
         "counterArticle": "blog_Article",
         "counterComment": "blog_Comment",
@@ -346,6 +360,21 @@ def refresh_counters(conn) -> None:
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", required=True, help="runtime data directory")
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="also write the hello world demo content",
+    )
+    parser.add_argument(
+        "--password",
+        default=DEFAULT_PASSWORD,
+        help=f"password for the administrator account (default: {DEFAULT_PASSWORD})",
+    )
+    parser.add_argument(
+        "--admin",
+        default=DEFAULT_ADMIN,
+        help=f"administrator account name (default: {DEFAULT_ADMIN})",
+    )
     return parser.parse_args(argv)
 
 
@@ -356,18 +385,27 @@ def main(argv=None) -> int:
     db.ensure_schema(conn)
     stamp = now_stamp(conn)
 
-    print(f"settings written : {seed_settings(conn)}")
-    print(f"groups written   : {seed_groups(conn)}")
-    print(f"smilies written  : {seed_smilies(conn)}")
-    print(f"admin written    : {seed_admin(conn, stamp)}")
-    for table, rows in seed_content(conn, stamp).items():
-        print(f"{table:17}: {rows}")
-    refresh_counters(conn)
+    settings_added = seed_settings(conn)
+    groups_added = seed_groups(conn)
+    smilies_added = seed_smilies(conn)
+    admin_added = seed_admin(conn, stamp, args.password, args.admin)
 
+    print(f"settings added  : {settings_added}")
+    print(f"groups added    : {groups_added}")
+    print(f"smilies added   : {smilies_added}")
+    print(f"admin created   : {'yes' if admin_added else 'already there'}")
+
+    if args.demo:
+        for table, rows in seed_demo_content(conn, stamp).items():
+            print(f"{table:16}: {rows} demo row(s)")
+
+    refresh_counters(conn)
     conn.commit()
     conn.close()
-    print(f"\nseeded {config.db_path()}")
-    print(f"login: {ADMIN_NAME} / {ADMIN_PASSWORD}")
+
+    print(f"\ndatabase ready: {config.db_path()}")
+    if admin_added:
+        print(f"login: {args.admin} / {args.password}   <- change this password now")
     return 0
 
 
