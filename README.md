@@ -60,8 +60,8 @@ Runtime state (the SQLite database, `secret_key`, backups) lives in
 
 Table and column names match the original Access database exactly
 (`blog_Article`, `blog_Comment`, `blog_Settings`, `blog_User`, `Guestbook`, …).
-The column-by-column comparison is in `docs/database.md`; the reasoning behind
-the recovered types is in `docs/plan/database.md`.
+The column-by-column comparison against the Access original, the type mapping
+and the index list are all in `docs/database.md`.
 
 ## Credits and licensing
 
