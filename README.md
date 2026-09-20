@@ -65,6 +65,9 @@ the recovered types is in `docs/plan/database.md`.
 
 ## Credits and licensing
 
+The original ASP source that this port is based on is archived at
+<https://github.com/sunxlonglongago/lbs2>.
+
 LBS^2 is licensed in a way that requires keeping the original copyright notice
 (the sources even carry `REMOVAL OF THIS COPYRIGHT ... WILL VIOLATE THE LICENCE`),
 so the footer keeps the upstream credit and adds this port underneath it:
