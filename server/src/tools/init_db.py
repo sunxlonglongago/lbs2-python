@@ -34,7 +34,9 @@ DEFAULT_SETTINGS = (
     ("announce", 1, 0, "You have installed LBS2.\n"
                        "Please login as Admin and config it in "
                        "[url=admin.asp]Administration Page[/url]."),
-    ("announceDate", 1, 0, "2005-03-04 18:46:00"),
+    # Stamped with the install time by seed_settings; the value here is only a
+    # placeholder so the tuple keeps its (name, type, value0, value1) shape.
+    ("announceDate", 1, 0, ""),
     ("announceShow", 0, 1, ""),
     ("announceUBBFlags", 1, 0, "111111"),
     ("articlePerPageList", 0, 40, ""),
@@ -128,7 +130,7 @@ def count(conn, table: str) -> int:
     return int(db.scalar(conn, f"SELECT COUNT(*) FROM {table}") or 0)
 
 
-def seed_settings(conn) -> int:
+def seed_settings(conn, stamp: str) -> int:
     """Insert defaults that are missing; never touch an existing value."""
     written = 0
     for name, set_type, value0, value1 in DEFAULT_SETTINGS:
@@ -136,6 +138,8 @@ def seed_settings(conn) -> int:
             conn, "SELECT 1 FROM blog_Settings WHERE set_name = ?", (name,)
         ):
             continue
+        if name == "announceDate":
+            value1 = stamp
         db.insert(
             conn,
             "blog_Settings",
@@ -385,7 +389,7 @@ def main(argv=None) -> int:
     db.ensure_schema(conn)
     stamp = now_stamp(conn)
 
-    settings_added = seed_settings(conn)
+    settings_added = seed_settings(conn, stamp)
     groups_added = seed_groups(conn)
     smilies_added = seed_smilies(conn)
     admin_added = seed_admin(conn, stamp, args.password, args.admin)
