@@ -1,0 +1,39 @@
+# LBS^2 Python port - nginx reverse proxy example
+#
+# Upstream is the systemd service lbs (deploy/lbs.service) on 127.0.0.1:$PORT.
+# Replace example.com with your own domain and adjust the certificate paths.
+
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name example.com;
+
+    # Upload size limit; must not be smaller than uploadSize in the settings.
+    client_max_body_size 10m;
+
+    ssl_certificate     /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    access_log /var/log/nginx/lbs_access.log;
+    error_log  /var/log/nginx/lbs_error.log;
+
+    # Everything goes to the backend: the .asp page look and /api/*.asp are handled in the app.
+    location / {
+        proxy_pass http://127.0.0.1:5059;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+}

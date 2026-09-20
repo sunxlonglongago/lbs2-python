@@ -1,0 +1,20 @@
+[project]
+name = "lbs"
+version = "0.1.0"
+description = "LBS^2 port: Flask + SQLite weblog"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0",
+]
+
+[project.optional-dependencies]
+import = [
+    "access_parser>=0.0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["app.py"]

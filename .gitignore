@@ -216,3 +216,30 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------- LBS^2 port ----------
+# Local development data: SQLite database, secret_key, db backups, uploads.
+dev-data/
+# Runtime data directory used by --data (database, secret_key, uploads).
+data/
+
+# Original Access databases and their backups. They carry real user rows
+# (names, e-mails, IPs), so they must never end up in the repository: keep them
+# outside the checkout and point LBS_SOURCE_DATA at them instead.
+*.mdb
+*.accdb
+*.ldb
+*.bak
+db-backups/
+
+# Secrets
+secret_key
+.env
+.env.*
+cookies.txt
+
+# Runtime SQLite side files
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm

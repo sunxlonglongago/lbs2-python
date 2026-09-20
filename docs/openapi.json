@@ -1,0 +1,3757 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LBS^2 (Python port) API",
+    "version": "2.0.304",
+    "description": "HTTP API of the LBS^2 v2.0.304 port (ASP + JScript + Access) on Flask + SQLite. Table and column names match the original Access database, and permissions use the same five digit group_rights string."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "frontend and API share one origin"
+    }
+  ],
+  "tags": [
+    {
+      "name": "auth",
+      "description": "login, logout, registration (auth.py / login.asp)"
+    },
+    {
+      "name": "articles",
+      "description": "article listing and writes (articles.py / default.asp, article.asp)"
+    },
+    {
+      "name": "comments",
+      "description": "comments (comments.py / comment.asp)"
+    },
+    {
+      "name": "guestbook",
+      "description": "guestbook (guestbook.py / gbook.asp)"
+    },
+    {
+      "name": "trackback",
+      "description": "trackbacks (trackback.py / trackback.asp)"
+    },
+    {
+      "name": "users",
+      "description": "user profiles and listing (users.py / user.asp)"
+    },
+    {
+      "name": "site",
+      "description": "site metadata, language pack, statistics, feeds (app.py, feed.py)"
+    },
+    {
+      "name": "upload",
+      "description": "attachments (uploads.py / upload.asp)"
+    },
+    {
+      "name": "admin",
+      "description": "admin backend (admin.py / admin.asp); needs an administrator past the second login"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false
+          },
+          "error": {
+            "type": "string",
+            "description": "language string key, translated by the frontend through /api/lang"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "article_count": {
+            "type": "integer"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Rights": {
+        "type": "object",
+        "description": "the five group_rights digits expanded; 0 none, 1 own objects, 2 everything",
+        "properties": {
+          "view": {
+            "type": "integer"
+          },
+          "post": {
+            "type": "integer"
+          },
+          "edit": {
+            "type": "integer"
+          },
+          "delete": {
+            "type": "integer"
+          },
+          "upload": {
+            "type": "integer"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group_id": {
+            "type": "integer"
+          },
+          "group_name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "integer"
+          },
+          "email": {
+            "type": "string"
+          },
+          "email_visible": {
+            "type": "boolean"
+          },
+          "hide_email": {
+            "type": "boolean"
+          },
+          "homepage": {
+            "type": "string"
+          },
+          "article_count": {
+            "type": "integer"
+          },
+          "comment_count": {
+            "type": "integer"
+          },
+          "last_visit": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "rights": {
+            "$ref": "#/components/schemas/Rights"
+          }
+        }
+      },
+      "Article": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "title_html": {
+            "type": "string",
+            "description": "title with search highlighting applied"
+          },
+          "author": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "integer"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "mode": {
+            "type": "integer",
+            "description": "1 public, 2 draft, 3 hidden, 4 private"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "ubb_flags": {
+            "type": "string"
+          },
+          "post_time": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "comment_count": {
+            "type": "integer"
+          },
+          "trackback_count": {
+            "type": "integer"
+          },
+          "view_count": {
+            "type": "integer"
+          },
+          "content_html": {
+            "type": "string",
+            "description": "server rendered body"
+          },
+          "content_raw": {
+            "type": "string",
+            "description": "only on the detail endpoint, for the edit form"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ArticleForm": {
+        "type": "object",
+        "required": [
+          "log_catid",
+          "log_mode",
+          "log_title",
+          "message"
+        ],
+        "properties": {
+          "log_catid": {
+            "type": "integer"
+          },
+          "log_mode": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          "log_title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "body; a [separator] token splits it by hand"
+          },
+          "log_postTime": {
+            "type": "string"
+          },
+          "log_trackbackurl": {
+            "type": "string"
+          },
+          "log_locked": {
+            "type": "boolean"
+          },
+          "log_selected": {
+            "type": "boolean"
+          },
+          "e_html": {
+            "type": "boolean"
+          },
+          "e_ubb": {
+            "type": "boolean"
+          },
+          "e_autourl": {
+            "type": "boolean"
+          },
+          "e_image": {
+            "type": "boolean"
+          },
+          "e_media": {
+            "type": "boolean"
+          },
+          "e_smilies": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "integer",
+            "description": "0 comment, 1 trackback"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "author": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "integer"
+          },
+          "post_time": {
+            "type": "string"
+          },
+          "content_html": {
+            "type": "string"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "ip": {
+            "type": "string"
+          }
+        }
+      },
+      "GuestbookEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "content_html": {
+            "type": "string"
+          },
+          "reply_html": {
+            "type": "string"
+          },
+          "has_reply": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "post_time": {
+            "type": "string"
+          },
+          "reply_time": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "can_edit": {
+            "type": "boolean"
+          },
+          "can_delete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Trackback": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "article_id": {
+            "type": "integer"
+          },
+          "article_title": {
+            "type": "string"
+          },
+          "article_author_id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "title_html": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "blog": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "excerpt_html": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          }
+        }
+      },
+      "Settings": {
+        "type": "object",
+        "description": "blog_Settings flattened to {set_name: value}; set_type=0 reads set_value0, =1 reads set_value1",
+        "additionalProperties": true
+      },
+      "PageLinks": {
+        "type": "string",
+        "description": "HTML produced by the original generatePageLinks"
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login.asp": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Log in",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors login.asp?act=login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout.asp": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Log out",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me.asp": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Current user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register.asp": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors register.asp; needs enableRegister=1"
+      }
+    },
+    "/api/site.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "Site metadata",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "title, description, theme paths, feature switches, counters, online users, sidebar and announcement"
+      }
+    },
+    "/api/lang.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "Language pack",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "every string from lang/blog.asp and lang/admin.asp"
+      }
+    },
+    "/api/health.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "Health check and counters",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/articles.asp": {
+      "get": {
+        "tags": [
+          "articles"
+        ],
+        "summary": "Article list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Article"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    },
+                    "pages": {
+                      "type": "integer"
+                    },
+                    "page_links": {
+                      "$ref": "#/components/schemas/PageLinks"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors default.asp: view mode, category, author, featured, search and date filters plus pagination",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "normal or list"
+          },
+          {
+            "name": "cat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "category id"
+          },
+          {
+            "name": "user",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "author id"
+          },
+          {
+            "name": "selected",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "true for featured articles only"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "YYYY-MM-DD"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "page number, starting at 1"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "search keywords, space separated"
+          },
+          {
+            "name": "hl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "highlight keywords, defaults to q"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "articles"
+        ],
+        "summary": "Create article",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors article.asp?act=save; needs rights.post>1\n\nlogin required and rights.post>1",
+        "security": [
+          {
+            "login required and rights.post>1": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleForm"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/articles/{article_id}.asp": {
+      "get": {
+        "tags": [
+          "articles"
+        ],
+        "summary": "Article detail",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "article": {
+                      "$ref": "#/components/schemas/Article"
+                    },
+                    "comments": {
+                      "type": "object"
+                    },
+                    "previous": {
+                      "type": "object"
+                    },
+                    "next": {
+                      "type": "object"
+                    },
+                    "can_comment": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors article.asp: body, neighbours, comments merged with trackbacks; the view counter is incremented",
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "article id"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "comment page"
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "articles"
+        ],
+        "summary": "Update article",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors act=update\n\nlogin required and rights.edit>1, or rights.edit==1 on your own article",
+        "security": [
+          {
+            "login required and rights.edit>1, or rights.edit==1 on your own article": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "article id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleForm"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "articles"
+        ],
+        "summary": "Delete article",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors act=delete; comments and trackbacks go with it\n\nlogin required and rights.delete>1, or rights.delete==1 on your own article",
+        "security": [
+          {
+            "login required and rights.delete>1, or rights.delete==1 on your own article": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "article id"
+          }
+        ]
+      }
+    },
+    "/api/articles/{article_id}/comments.asp": {
+      "post": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Post comment",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors comment.asp?act=save; anonymous visitors may post, a supplied comm_password is verified first",
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "article id"
+          }
+        ]
+      }
+    },
+    "/api/comments/{comment_id}.asp": {
+      "patch": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Edit comment",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "login required and rights.edit allows it": []
+          }
+        ],
+        "description": "login required and rights.edit allows it",
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "comment id"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Delete comment",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "login required and rights.delete allows it": []
+          }
+        ],
+        "description": "login required and rights.delete allows it",
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "comment id"
+          }
+        ]
+      }
+    },
+    "/api/guestbook.asp": {
+      "get": {
+        "tags": [
+          "guestbook"
+        ],
+        "summary": "Guestbook list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GuestbookEntry"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "page number, starting at 1"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "search keywords, space separated"
+          },
+          {
+            "name": "hl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "highlight keywords, defaults to q"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "guestbook"
+        ],
+        "summary": "Post guestbook entry",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "anonymous visitors may post, with the same rules as comments"
+      }
+    },
+    "/api/guestbook/{entry_id}.asp": {
+      "get": {
+        "tags": [
+          "guestbook"
+        ],
+        "summary": "Single guestbook entry (for editing)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GuestbookEntry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "login required and rights.edit>=1": []
+          }
+        ],
+        "description": "login required and rights.edit>=1",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "entry id"
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "guestbook"
+        ],
+        "summary": "Edit or reply to a guestbook entry",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "login required; the reply area needs rights.edit>2": []
+          }
+        ],
+        "description": "login required; the reply area needs rights.edit>2",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "entry id"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "guestbook"
+        ],
+        "summary": "Delete guestbook entry",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "login required and rights.delete allows it, or administrator": []
+          }
+        ],
+        "description": "login required and rights.delete allows it, or administrator",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "entry id"
+          }
+        ]
+      }
+    },
+    "/api/trackbacks.asp": {
+      "get": {
+        "tags": [
+          "trackback"
+        ],
+        "summary": "Trackback list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Trackback"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "filter by article"
+          },
+          {
+            "name": "cat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "filter by category"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "page number, starting at 1"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "search keywords, space separated"
+          },
+          {
+            "name": "hl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "highlight keywords, defaults to q"
+          }
+        ]
+      }
+    },
+    "/api/trackbacks/{trackback_id}.asp": {
+      "delete": {
+        "tags": [
+          "trackback"
+        ],
+        "summary": "Delete trackback",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "login required and rights.delete allows it": []
+          }
+        ],
+        "description": "login required and rights.delete allows it",
+        "parameters": [
+          {
+            "name": "trackback_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "trackback id"
+          }
+        ]
+      }
+    },
+    "/trackback/{article_id}.asp": {
+      "get": {
+        "tags": [
+          "trackback"
+        ],
+        "summary": "Receive a Trackback ping",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors the default branch of trackback.asp; answers text/xml with <response><error>0</error></response>",
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "target article id"
+          },
+          {
+            "name": "url",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "source URL"
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "title"
+          },
+          {
+            "name": "excerpt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "excerpt"
+          },
+          {
+            "name": "blog_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "blog name"
+          }
+        ]
+      }
+    },
+    "/feed.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "RSS/JS feed",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "category filter"
+          },
+          {
+            "name": "selected",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "true for featured entries only"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "use comment for the comment feed"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "comment feed of one article"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "use js for a document.write snippet"
+          }
+        ]
+      }
+    },
+    "/api/categories.asp": {
+      "get": {
+        "tags": [
+          "articles"
+        ],
+        "summary": "Category list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Category"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/archive.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "Sidebar calendar",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "year"
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "month"
+          }
+        ]
+      }
+    },
+    "/api/stats.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "Site counters",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/visitors.asp": {
+      "get": {
+        "tags": [
+          "site"
+        ],
+        "summary": "Visitor records",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors stats.asp\n\nadministrator",
+        "security": [
+          {
+            "administrator": []
+          }
+        ]
+      }
+    },
+    "/api/users.asp": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "User list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "page number"
+          }
+        ]
+      }
+    },
+    "/api/users/{user_id}.asp": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "User profile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "user id"
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Update profile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors user.asp?act=update; an administrator editing somebody else confirms with their own password, groupID is administrator-only\n\nself or administrator",
+        "security": [
+          {
+            "self or administrator": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "user id"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Delete user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "author ids in articles, comments and guestbook entries become 0; deleting the last administrator is refused\n\nself or administrator",
+        "security": [
+          {
+            "self or administrator": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "user id"
+          }
+        ]
+      }
+    },
+    "/api/upload.asp": {
+      "post": {
+        "tags": [
+          "upload"
+        ],
+        "summary": "Upload attachment",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "multipart/form-data with the field named File; stored under data/uploads/YYMM/DD_hhiiss_<name>.ext\n\nlogin required, rights.upload>0 and enableUpload=1",
+        "security": [
+          {
+            "login required, rights.upload>0 and enableUpload=1": []
+          }
+        ]
+      }
+    },
+    "/api/upload/limits.asp": {
+      "get": {
+        "tags": [
+          "upload"
+        ],
+        "summary": "Upload limits",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploads/{name}.asp": {
+      "get": {
+        "tags": [
+          "upload"
+        ],
+        "summary": "Download an attachment",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/login.asp": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin second login",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mirrors admin.asp?act=login\n\nsite administrator",
+        "security": [
+          {
+            "site administrator": []
+          }
+        ]
+      }
+    },
+    "/api/admin/logout.asp": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Leave the admin backend",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/info.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Server and counter information",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    },
+    "/api/admin/settings.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read every setting",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Settings"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Save settings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "validates each field the way updateSettings does: empty strings are skipped, integers use exclusive bounds, booleans are always written\n\nadministrator with the second login done",
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ]
+      }
+    },
+    "/api/admin/categories.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin category list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bulk category operation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "act=update renames, reorders and inserts; act=move relocates articles; act=delete removes their articles, comments and trackbacks too\n\nadministrator with the second login done",
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ]
+      }
+    },
+    "/api/admin/groups.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "User group list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bulk user group operation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "the built-in Admin group is skipped; deleting a group removes its users too\n\nadministrator with the second login done",
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ]
+      }
+    },
+    "/api/admin/smilies.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Smiley list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bulk smiley operation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    },
+    "/api/admin/wordfilter.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Word filter list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bulk word filter operation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    },
+    "/api/admin/database.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Database info and backup list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Database operation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "act=compact runs VACUUM, act=backup writes a _YYMMDD_hhiiss.bak file, act=restore and act=delete manage the backups\n\nadministrator with the second login done",
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ]
+      }
+    },
+    "/api/admin/attachments.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Attachment listing",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "sub path relative to data/uploads"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete an attachment or an empty folder",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    },
+    "/api/admin/announce.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read the announcement",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Save the announcement",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    },
+    "/api/admin/links.asp": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read the links",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Save the links",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    },
+    "/api/admin/misc.asp": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Maintenance",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "act=resync_g/resync_c/resync_a/resync_u recompute counters; clean_u/clean_vc/clean_gb remove stale rows\n\nadministrator with the second login done",
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ]
+      }
+    },
+    "/api/admin/site-state.asp": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Open or close the site",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "no permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "administrator with the second login done": []
+          }
+        ],
+        "description": "administrator with the second login done"
+      }
+    }
+  }
+}

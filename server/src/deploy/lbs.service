@@ -1,0 +1,40 @@
+[Unit]
+Description=LBS^2 Python port (Flask)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The install target rewrites these two fields with the current user.
+User=lbs
+Group=lbs
+WorkingDirectory=/data/release/lbs/server
+
+# Dependencies are synced by `make install` / `make update`; restarts stay offline.
+ExecStart=/usr/local/bin/uv run --frozen --no-sync python app.py --data /data/release/lbs/data
+
+# app.py always listens on 127.0.0.1 and reads the port from $PORT.
+Environment=PORT=5059
+Environment=PYTHONUNBUFFERED=1
+
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lbs
+
+# Light hardening: only data/ is writable, the static output is read-only.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/data/release/lbs/data
+ReadOnlyPaths=/data/release/lbs/server/static
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

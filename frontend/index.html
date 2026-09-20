@@ -1,0 +1,177 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>LBS^2</title>
+<meta name="robots" content="follow,index" />
+<link id="siteStylesheet" rel="stylesheet" type="text/css" href="styles/default/styles.css" />
+<link id="siteFeed" rel="alternate" type="application/rss+xml" title="LBS^2" href="feed.asp" />
+<script type="text/javascript" language="javascript" src="js/common.js"></script>
+<script type="module" src="js/app/home.js"></script>
+</head>
+<body>
+<div id="wrapper">
+<div id="innerWrapper">
+<div id="siteClosedBanner" style="display: none; border: solid 1px #CC0000; text-align: center; background: #FFEEDD;color: #990000">Site is Currently Closed</div>
+<div id="header">
+<div id="innerHeader">
+  <div id="blogLogo"><img src="styles/default/images/logo.gif" id="logo" alt="Logo" /></div>
+  <div class="blog-header">
+    <h1 class="blog-title"><a href="./" id="blogTitle">LBS^2</a></h1>
+    <div class="blog-desc" id="blogDescription">A Place for Expression</div>
+  </div>
+  <div id="menu">
+    <ul>
+    <li><a href="default.asp" id="menuIndex">Index</a></li>
+    <li><a href="default.asp?selected=true" id="menuSelected">Selected Content</a></li>
+    <li><a href="gbook.asp" id="menuGuestbook">Guestbook</a></li>
+    <li><a href="javascript:showHideSidebar()" id="menuToggle">Toggle Sidebar</a></li>
+    <li id="menuLoginItem"><a href="javascript:showLogin()" id="menuLogin">Login</a></li>
+    </ul>
+  </div>
+</div>
+</div>
+<div id="mainWrapper">
+<div id="content" class="content">
+<div id="innerContent">
+  <div class="announce" id="announceBox" style="display: none">
+    <div class="announce-content">
+      <div class="announce-time" id="announceTime"></div>
+      <div id="announceBody"></div>
+      <br />
+    </div>
+  </div>
+  <div class="article-top">
+    <div class="view-mode">
+      <span id="viewModeLabel">View Mode</span>:
+      <a href="default.asp?mode=normal" id="modeNormal">Normal</a> |
+      <a href="default.asp?mode=list" id="modeList">Article List</a>
+    </div>
+    <div class="pages" id="topPages"></div>
+  </div>
+  <div id="articleList"></div>
+  <div class="article-bottom">
+    <div class="pages" id="bottomPages"></div>
+  </div>
+</div>
+</div>
+<div id="sidebar" class="sidebar">
+<div id="innerSidebar">
+
+  <div id="panel_user" class="panel" style="display: none">
+  <h5 id="panelUserTitle">User Panel</h5>
+  <div class="panel-content">
+    <div class="comment-text" id="panelUserGreeting"></div><br />
+    <ul id="panelUserLinks">
+    </ul>
+  </div>
+  </div>
+
+  <div id="panelUser" class="panel" style="display: none">
+  <h5>User Panel</h5>
+  <div class="panel-content">
+    <div id="loginFormWrapper">
+    <form id="loginForm" name="login" method="post" action="login.asp">
+    <table cellpadding="0" cellspacing="2" width="100%">
+      <tr id="loginUsernameRow">
+        <td align="right"><span id="loginUsernameLabel">Username</span>:</td>
+        <td><input name="username" type="text" size="12" maxlength="24" class="text" /></td>
+      </tr>
+      <tr id="loginPasswordRow">
+        <td align="right"><span id="loginPasswordLabel">Password</span>:</td>
+        <td><input name="password" type="password" size="12" maxlength="16" class="text" /></td>
+      </tr>
+      <tr id="loginScodeRow" style="display: none">
+        <td align="right"><span id="loginScodeLabel">Security Code</span>:</td>
+        <td><input name="scode" size="4" maxlength="4" type="text" class="text" />
+        <img id="loginScodeImage" alt="Security Code" /></td>
+      </tr>
+      <tr id="loginRememberRow">
+        <td align="right"><span id="loginRememberLabel">Auto Login</span>:</td>
+        <td><input name="remember" type="checkbox" value="true" /></td>
+      </tr>
+      <tr>
+        <td align="center" id="loginRegisterRow">
+        <a href="register.asp" id="loginRegisterLink" style="text-decoration: underline; color: #666666;">Register Now</a>
+        </td>
+        <td>
+        <input name="Login" type="submit" id="loginSubmit" value="  Login  " class="button" />
+        </td>
+      </tr>
+    </table>
+    </form>
+    </div>
+  </div>
+  </div>
+
+  <div id="panelCategory" class="panel">
+  <h5 id="panelCategoryTitle">Categories</h5>
+  <div class="panel-content">
+  <ul id="panelCategoryList">
+  </ul>
+  </div>
+  </div>
+
+  <div id="panelCalendar" class="panel">
+  <h5 id="panelCalendarTitle">Calendar</h5>
+  <div id="panelCalendarBody"></div>
+  </div>
+
+  <div id="panelArticle" class="panel">
+  <h5 id="panelArticleTitle">Recent Articles</h5>
+  <div class="panel-content">
+  <ul id="panelArticleList">
+  </ul>
+  </div>
+  </div>
+
+  <div id="panelComment" class="panel">
+  <h5 id="panelCommentTitle">Recent Comments</h5>
+  <div class="panel-content">
+  <ul id="panelCommentList">
+  </ul>
+  </div>
+  </div>
+
+  <div id="panelSearch" class="panel">
+  <h5 id="panelSearchTitle">Search</h5>
+  <div class="panel-content">
+    <form id="searchForm" name="searchForm" method="get" action="default.asp" onsubmit="return doSearch();">
+    <input name="q" type="text" id="q" class="text search-field" />
+    <select name="searchType" id="searchType">
+    </select>
+    <input name="submit" type="submit" id="searchSubmit" value=" Search " class="button" />
+    </form>
+  </div>
+  </div>
+
+  <div id="panelStats" class="panel">
+  <h5 id="panelStatsTitle">Statistics</h5>
+  <div class="panel-content" id="panelStatsList">
+  </div>
+  </div>
+
+  <div id="panelLinks" class="panel">
+  <h5 id="panelLinksTitle">Links</h5>
+  <div class="panel-content" id="panelLinksBody">
+  </div>
+  </div>
+
+</div>
+</div>
+<div class="clear"></div>
+</div>
+<div id="footer">
+<div id="innerFooter">
+<!-- REMOVAL OF THIS COPYRIGHT WITHOUT PERMISSION FROM THE AUTHOR WILL VIOLATE THE LICENCE YOU AGREED TO WHEN DOWNLOADING THIS SOFTWARE. -->
+<!-- Copyright Start -->
+Powered by <a href="http://www.voidland.com/" target="_blank">LBS Version 2.0.304</a> &copy; 2003-2005 SiC/CYAN.<br />
+Python port &copy; 2026 nxlong &middot; LBS^2-Py 0.1.0 (Flask + SQLite)<br />
+<!-- Copyright End -->
+<b><span id="footerQueries">0</span> DB Queries | Proccessed in <span id="footerTime">0</span>ms</b>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
