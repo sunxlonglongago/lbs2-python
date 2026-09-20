@@ -1,0 +1,56 @@
+LBS^2 PYTHON PORT - NOTICE
+===============================================================================
+
+Upstream
+-------------------------------------------------------------------------------
+
+  LBS^2 v2.0.304 - an ASP + JScript + ADODB + Access 2000 weblog engine
+  Copyright 2005 SiC/CYAN. All rights reserved.
+  Archived copy: https://github.com/sunxlonglongago/lbs2
+
+  The original sources carry the reminder that removing the copyright notice
+  violates the licence the software was distributed under. The page footer of
+  this port therefore keeps the upstream credit:
+
+    Powered by LBS Version 2.0.304 (c) 2003-2005 SiC/CYAN.
+    Python port (c) 2026 nxlong - LBS^2-Py 0.1.0 (Flask + SQLite)
+
+
+Files taken from upstream
+-------------------------------------------------------------------------------
+
+  frontend/styles/default/**        theme, stylesheet and images
+  frontend/styles/evergreen/**      theme, stylesheet and images
+  frontend/styles/oldschool/**      theme, stylesheet and images
+  frontend/js/common.js             sidebar, login box, quote, comment toggle,
+                                    search and font size helpers
+  frontend/js/messageform.js        UBB toolbar, smilies and form validation
+
+  These files are unmodified copies. The build step copies them into
+  server/src/static/, so the same files also appear there.
+
+
+Work new to this port
+-------------------------------------------------------------------------------
+
+  server/src/**                     Flask application, SQLite data layer, UBB
+                                    renderer, feeds, admin backend and tooling
+  server/tests/**                   end-to-end scenarios and runner
+  frontend/*.html                   page skeletons
+  frontend/js/app/**                request layer, layout, renderers and the
+                                    per-page loaders
+  docs/**                           data dictionary, API reference, OpenAPI
+                                    description and the porting plan
+
+  The English strings in server/src/lang.py are ported from the original
+  lang/blog.asp and lang/admin.asp; the database schema follows the original
+  Access tables column by column.
+
+
+Licence
+-------------------------------------------------------------------------------
+
+  The whole repository is distributed under the LBS^2 terms reproduced in
+  LICENSE: free to use and redistribute, with or without modification, for
+  non-commercial purposes, provided the copyright notices and this notice are
+  retained.

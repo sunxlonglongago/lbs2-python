@@ -68,9 +68,15 @@ the recovered types is in `docs/plan/database.md`.
 The original ASP source that this port is based on is archived at
 <https://github.com/sunxlonglongago/lbs2>.
 
-LBS^2 is licensed in a way that requires keeping the original copyright notice
-(the sources even carry `REMOVAL OF THIS COPYRIGHT ... WILL VIOLATE THE LICENCE`),
-so the footer keeps the upstream credit and adds this port underneath it:
+This repository is distributed under **the same licence as LBS^2**, reproduced
+verbatim in [LICENSE](LICENSE): free to use and redistribute, with or without
+modification, for **non-commercial purposes**, provided the copyright notices
+are retained. [NOTICE](NOTICE) lists which files come from upstream
+(`frontend/styles/**`, `common.js`, `messageform.js`) and which are new here.
+
+LBS^2 requires keeping the original copyright notice (the sources even carry
+`REMOVAL OF THIS COPYRIGHT ... WILL VIOLATE THE LICENCE`), so the footer keeps
+the upstream credit and adds this port underneath it:
 
 ```
 Powered by LBS Version 2.0.304 © 2003-2005 SiC/CYAN.

@@ -1,0 +1,52 @@
+LBS^2 PYTHON PORT - LICENSE
+===============================================================================
+
+This project is a Python port of LBS^2 v2.0.304. It is distributed under the
+same terms as the original software, reproduced verbatim below, and it keeps the
+original copyright notice and attribution as those terms require.
+
+Portions of this repository were taken from LBS^2:
+
+  - frontend/styles/**            (the three themes, including their images)
+  - frontend/js/common.js
+  - frontend/js/messageform.js
+
+Everything else (the Flask + SQLite backend, the JavaScript application layer,
+the page skeletons and the English strings ported from the original language
+files) is new work for the port. See NOTICE for the full attribution.
+
+
+LICENSE AGREEMENT
+-------------------------------------------------------------------------------
+Copyright 2005 SiC/CYAN. All rights reserved.
+
+You can redistribute and use this software, with or without modification, are
+permitted provided that the following conditions are met:
+
+This software is provided as freeware, and you can redistribute or use it on
+non-commercial purposes.
+
+Redistributions of source code must retain the above copyright notice, this list
+of conditions and the following disclaimer. Neither the name of this software
+nor the names of its contributors may be used to endorse or promote products
+derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+PORT COPYRIGHT
+-------------------------------------------------------------------------------
+Copyright 2026 nxlong. All rights reserved.
+
+The port is released under the terms above: free to use and redistribute, with
+or without modification, for non-commercial purposes, provided this notice and
+the copyright statements are retained.
