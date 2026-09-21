@@ -1388,7 +1388,9 @@ def api_upload_limits():
         return jsonify(
             {
                 "ok": True,
-                "size": settings_module.get_int(conn, "uploadSize", 40000),
+                "size": settings_module.get_int(
+                    conn, "uploadSize", uploads.DEFAULT_UPLOAD_LIMIT
+                ),
                 "types": uploads.upload_types(conn),
                 "enabled": settings_module.get_flag(conn, "enableUpload", True),
             }

@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config  # noqa: E402
 import db  # noqa: E402
 import schema  # noqa: E402
+import uploads  # noqa: E402
 
 # (set_name, set_type, set_value0, set_value1) - the defaults the software ships.
 DEFAULT_SETTINGS = (
@@ -84,7 +85,7 @@ DEFAULT_SETTINGS = (
     ("smiliesPerRow", 0, 4, ""),
     ("styleSheet", 1, 0, "styles/default/styles.css"),
     ("uploadPath", 1, 0, "uploads/"),
-    ("uploadSize", 0, 40000, ""),
+    ("uploadSize", 0, uploads.DEFAULT_UPLOAD_LIMIT, ""),
     ("uploadTypes", 1, 0, "ZIP,RAR,GIF,JPG,PNG"),
 )
 

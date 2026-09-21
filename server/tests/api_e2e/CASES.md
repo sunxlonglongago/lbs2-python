@@ -57,6 +57,7 @@ do not edit by hand. The scenarios live in `server/tests/api_e2e/scenarios/`.
 | feeds | `feeds.categories` | the category and calendar endpoints |
 | upload | `upload.limits` | the upload limits are readable |
 | upload | `upload.reject_type` | a non-whitelisted extension is refused |
+| upload | `upload.reject_size` | a file over the size limit is refused |
 | upload | `upload.accept` | a whitelisted image uploads and yields a UBB tag |
 | upload | `upload.guest` | anonymous uploads are refused |
 | urls | `urls.root` | the root redirects to default.asp |

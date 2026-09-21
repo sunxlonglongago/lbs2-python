@@ -6,6 +6,7 @@ DOC = "attachments: type, size and directory rules"
 CASES = [
     ("upload.limits", "the upload limits are readable"),
     ("upload.reject_type", "a non-whitelisted extension is refused"),
+    ("upload.reject_size", "a file over the size limit is refused"),
     ("upload.accept", "a whitelisted image uploads and yields a UBB tag"),
     ("upload.guest", "anonymous uploads are refused"),
 ]
@@ -32,7 +33,7 @@ def run(ctx):
     ctx.case("upload.limits")
     response, payload = ctx.get("admin", "/api/upload/limits")
     ctx.check_status(response, 200, "the upload limits are readable")
-    ctx.check(payload["size"] > 0, "the size limit is returned")
+    ctx.check_equal(payload["size"], 10485760, "a fresh install allows 10 MB")
     ctx.check("gif" in payload["types"], "gif is whitelisted")
 
     ctx.case("upload.reject_type")
@@ -44,6 +45,16 @@ def run(ctx):
     )
     ctx.check_status(response, 400, "a non-whitelisted type is refused")
     ctx.check_equal((payload or {}).get("error"), "type", "error code is type")
+
+    ctx.case("upload.reject_size")
+    response, payload = ctx.post(
+        "admin",
+        "/api/upload",
+        data={"File": (__import__("io").BytesIO(GIF + b"\x00" * 10485760), "huge.gif")},
+        content_type="multipart/form-data",
+    )
+    ctx.check_status(response, 400, "a file over the limit is refused")
+    ctx.check_equal((payload or {}).get("error"), "size", "error code is size")
 
     ctx.case("upload.accept")
     response, payload = ctx.post(

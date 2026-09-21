@@ -22,6 +22,10 @@ IMAGE_EXT = ("gif", "jpg", "bmp", "png", "tif")
 WMP_EXT = ("wma", "mp3", "avi", "wmv", "asf")
 RM_EXT = ("ra", "rm", "rmvb")
 
+# Bytes accepted when ``blog_Settings.uploadSize`` is missing. tools/init_db.py
+# seeds the setting with this value, so a fresh install and the fallback agree.
+DEFAULT_UPLOAD_LIMIT = 10 * 1024 * 1024
+
 
 def upload_types(conn: sqlite3.Connection) -> list[str]:
     raw = settings_module.get_text(conn, "uploadTypes", "")
@@ -50,7 +54,7 @@ def store(conn: sqlite3.Connection, storage) -> "tuple[dict | None, str | None]"
     data = storage.read()
     if not data:
         return None, "upload"
-    limit = settings_module.get_int(conn, "uploadSize", 40000)
+    limit = settings_module.get_int(conn, "uploadSize", DEFAULT_UPLOAD_LIMIT)
     if len(data) > limit:
         return None, "size"
 
