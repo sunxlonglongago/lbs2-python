@@ -15,6 +15,15 @@ the classic ASP look.
 - Pages are `default.asp`, `article.asp?id=1`, `admin.asp`; the API is served
   as `/api/articles.asp`, `/api/articles/1/comments.asp`, and so on
 
+## Interface preview
+
+The three themes that ship with the application; select one in the admin
+backend. Click a screenshot to open it full size.
+
+| Default | Evergreen | Oldschool |
+|---|---|---|
+| [![Default theme](preview/default-500.webp)](preview/default.webp) | [![Evergreen theme](preview/evergreen-500.webp)](preview/evergreen.webp) | [![Oldschool theme](preview/oldschool-500.webp)](preview/oldschool.webp) |
+
 ## Requirements
 
 - Python 3.10 or newer
